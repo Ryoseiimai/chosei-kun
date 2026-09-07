@@ -1,0 +1,1233 @@
+<!--
+  ちょうせいちゃん
+  単一ファイル・外部CDN不使用。
+  CalendarAdapter: window.Capacitor?.Plugins?.CapacitorCalendar が存在すればNativeアダプタ、
+  無ければMockアダプタを自動選択する。
+  G1照合済 2026-09-07: NativeAdapterは @ebarooni/capacitor-calendar (out/G1_plugin.md) の実APIに合わせ済み。
+-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ちょうせいちゃん</title>
+<style>
+  :root{
+    --accent:#1a73e8;
+    --bg:#ffffff;
+    --text:#1a1a1a;
+    --sub:#6b6b6b;
+    --line:#e6e6e6;
+    --card-bg:#f7f9fc;
+    --danger:#d93025;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    -webkit-text-size-adjust:100%;
+  }
+  #app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding-bottom:76px;
+  }
+  header{
+    padding:18px 16px 12px;
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    background:var(--bg);
+    z-index:5;
+  }
+  header h1{
+    margin:0;
+    font-size:20px;
+    font-weight:700;
+    color:var(--accent);
+  }
+  header p{
+    margin:4px 0 0;
+    font-size:13px;
+    color:var(--sub);
+  }
+  main{
+    flex:1;
+    padding:16px;
+  }
+  .screen{display:none;}
+  .screen.active{display:block;}
+  h2{
+    font-size:18px;
+    margin:0 0 12px;
+  }
+  .field{
+    margin-bottom:18px;
+  }
+  .field label{
+    display:block;
+    font-size:14px;
+    font-weight:600;
+    color:var(--sub);
+    margin-bottom:8px;
+  }
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--text);
+    padding:10px 14px;
+    border-radius:20px;
+    font-size:15px;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .chip.selected{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+    font-weight:600;
+  }
+  input[type=text], input[type=number], input[type=date], select, textarea{
+    width:100%;
+    font-size:16px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    color:var(--text);
+    font-family:inherit;
+  }
+  textarea{resize:vertical;min-height:90px;}
+  .btn{
+    display:block;
+    width:100%;
+    padding:14px;
+    font-size:16px;
+    font-weight:700;
+    border:none;
+    border-radius:12px;
+    background:var(--accent);
+    color:#fff;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:active{opacity:0.85;}
+  .btn.secondary{
+    background:#fff;
+    color:var(--accent);
+    border:1px solid var(--accent);
+  }
+  .btn.small{
+    padding:10px;
+    font-size:14px;
+    width:auto;
+  }
+  .card{
+    border:1px solid var(--line);
+    background:var(--card-bg);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .card.selectable{cursor:pointer;}
+  .card.selected{
+    border-color:var(--accent);
+    outline:2px solid var(--accent);
+  }
+  .card .date{
+    font-size:17px;
+    font-weight:700;
+  }
+  .card .time{
+    font-size:15px;
+    color:var(--text);
+    margin-top:2px;
+  }
+  .card .around{
+    font-size:12px;
+    color:var(--sub);
+    margin-top:6px;
+  }
+  .card-actions{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .empty{
+    color:var(--sub);
+    font-size:14px;
+    padding:20px 0;
+    text-align:center;
+  }
+  nav#tabs{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    max-width:430px;
+    margin:0 auto;
+    display:flex;
+    border-top:1px solid var(--line);
+    background:#fff;
+    z-index:10;
+  }
+  nav#tabs button{
+    flex:1;
+    padding:12px 0 calc(10px + env(safe-area-inset-bottom));
+    background:none;
+    border:none;
+    font-size:12px;
+    color:var(--sub);
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  nav#tabs button .icon{
+    display:block;
+    font-size:20px;
+    margin-bottom:2px;
+  }
+  nav#tabs button.active{
+    color:var(--accent);
+    font-weight:700;
+  }
+  .result-box{
+    background:var(--card-bg);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px;
+    margin-top:14px;
+    font-size:14px;
+    white-space:pre-wrap;
+  }
+  .result-box h3{
+    margin:0 0 8px;
+    font-size:14px;
+    color:var(--accent);
+  }
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:90px;
+    transform:translateX(-50%);
+    background:rgba(20,20,20,0.92);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:24px;
+    font-size:14px;
+    z-index:50;
+    opacity:0;
+    transition:opacity 0.2s ease;
+    pointer-events:none;
+    max-width:85%;
+    text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .checkbox-row input{width:20px;height:20px;}
+  .checkbox-row label{font-size:15px;margin:0;}
+  .hint{
+    font-size:12px;
+    color:var(--sub);
+    margin-top:6px;
+  }
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+  }
+  .switch{
+    position:relative;
+    width:46px;
+    height:26px;
+  }
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{
+    position:absolute;inset:0;
+    background:#ccc;
+    border-radius:26px;
+    cursor:pointer;
+    transition:0.2s;
+  }
+  .slider::before{
+    content:"";
+    position:absolute;
+    width:20px;height:20px;
+    left:3px;top:3px;
+    background:#fff;
+    border-radius:50%;
+    transition:0.2s;
+  }
+  .switch input:checked + .slider{background:var(--accent);}
+  .switch input:checked + .slider::before{transform:translateX(20px);}
+  section.settings-group{margin-bottom:22px;}
+  .save-note{font-size:12px;color:var(--sub);margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>ちょうせいちゃん</h1>
+    <p id="subhead">空き時間から候補を出して、そのまま予定に</p>
+  </header>
+
+  <main>
+    <!-- 画面1: 空き -->
+    <section id="screen-free" class="screen active">
+      <h2>空きを探す</h2>
+
+      <div class="field">
+        <label>所要時間</label>
+        <div class="chip-row" id="duration-chips">
+          <button type="button" class="chip" data-val="30">30分</button>
+          <button type="button" class="chip selected" data-val="60">60分</button>
+          <button type="button" class="chip" data-val="90">90分</button>
+          <button type="button" class="chip" data-val="120">120分</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>希望する時間帯</label>
+        <div class="chip-row" id="daypart-chips">
+          <button type="button" class="chip" data-val="morning">朝(8-11時)</button>
+          <button type="button" class="chip" data-val="noon">昼(11-17時)</button>
+          <button type="button" class="chip" data-val="night">夜(17-22時)</button>
+          <button type="button" class="chip selected" data-val="anytime">いつでも</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>探す期間</label>
+        <div class="chip-row" id="range-chips">
+          <button type="button" class="chip" data-val="3">今日から3日</button>
+          <button type="button" class="chip selected" data-val="7">今日から7日</button>
+        </div>
+      </div>
+
+      <button class="btn" id="btn-search">候補を出す</button>
+
+      <div id="candidates-area" style="margin-top:18px;"></div>
+    </section>
+
+    <!-- 画面2: 確定 -->
+    <section id="screen-confirm" class="screen">
+      <h2>予定を確定する</h2>
+      <div id="confirm-empty" class="empty">「空き」で候補を選ぶと、ここに表示されます</div>
+
+      <div id="confirm-body" style="display:none;">
+        <div class="card" id="confirm-selected-card"></div>
+
+        <div class="field">
+          <label>タイトル</label>
+          <input type="text" id="input-title" placeholder="例: 打ち合わせ">
+        </div>
+
+        <div class="field">
+          <label>場所</label>
+          <input type="text" id="input-location" placeholder="例: 渋谷駅前カフェ">
+        </div>
+
+        <div class="field">
+          <label>場所の緯度経度(任意・タクシー概算に使用)</label>
+          <input type="text" id="input-latlng" placeholder="例: 35.6595,139.7005">
+          <p class="hint">わかる場合だけ入力。空欄でもOKです。</p>
+        </div>
+
+        <div class="field">
+          <label>使うカレンダー</label>
+          <select id="input-calendar"></select>
+        </div>
+
+        <button class="btn" id="btn-create">予定を入れる</button>
+
+        <div id="notes-preview" class="result-box" style="display:none;"></div>
+      </div>
+    </section>
+
+    <!-- 画面3: 設定 -->
+    <section id="screen-settings" class="screen">
+      <h2>設定</h2>
+
+      <section class="settings-group">
+        <div class="field">
+          <label>自宅住所</label>
+          <input type="text" id="set-home-address">
+        </div>
+        <div class="field">
+          <label>自宅の緯度経度</label>
+          <input type="text" id="set-home-latlng">
+        </div>
+        <div class="field">
+          <label>最寄駅</label>
+          <input type="text" id="set-station">
+        </div>
+        <div class="field">
+          <label>駅まで徒歩(分)</label>
+          <input type="number" id="set-walk-min" min="0" max="120">
+        </div>
+        <div class="field">
+          <label>標準移動時間(分・出発時刻の計算に使用)</label>
+          <input type="number" id="set-travel-min" min="0" max="240">
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <div class="field">
+          <label>使うカレンダー</label>
+          <div id="set-calendars"></div>
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <div class="toggle-row">
+          <div>
+            <div style="font-weight:600;">デモモード</div>
+            <div class="hint" id="mode-hint">モックカレンダーで動作を確認できます</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="set-demo-mode">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <button class="btn" id="btn-save-settings">設定を保存</button>
+      <p class="save-note" id="save-note"></p>
+    </section>
+  </main>
+
+  <nav id="tabs">
+    <button type="button" class="tab-btn active" data-screen="screen-free">
+      <span class="icon">🔍</span>空き
+    </button>
+    <button type="button" class="tab-btn" data-screen="screen-confirm">
+      <span class="icon">✅</span>確定
+    </button>
+    <button type="button" class="tab-btn" data-screen="screen-settings">
+      <span class="icon">⚙️</span>設定
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     CalendarAdapter インターフェース
+     window.ChoseiCalendar = {
+       listCalendars(): Promise<Array<{id,name}>>
+       listEvents(fromISO, toISO): Promise<Array<{id,title,start,end,calendarId}>>
+       createEvent({title,start,end,location,notes,calendarId}): Promise<{id}>
+       requestAccess(): Promise<boolean>
+     }
+     ========================================================= */
+
+  var MOCK_CALENDARS = [
+    { id: "cal-personal", name: "個人" },
+    { id: "cal-companyA", name: "会社A" },
+    { id: "cal-companyB", name: "会社B" }
+  ];
+
+  function pad2(n){ return (n < 10 ? "0" : "") + n; }
+
+  function makeMockEvents(){
+    // 今後7日分、決め打ちの疑似予定をカレンダーごとに生成
+    var events = [];
+    var now = new Date();
+    var patterns = [
+      { calIdx: 0, dayOffset: 0, sh: 10, sm: 0, dur: 60, title: "朝会" },
+      { calIdx: 1, dayOffset: 0, sh: 13, sm: 0, dur: 90, title: "定例MTG" },
+      { calIdx: 0, dayOffset: 1, sh: 9, sm: 0, dur: 30, title: "1on1" },
+      { calIdx: 2, dayOffset: 1, sh: 15, sm: 0, dur: 60, title: "商談" },
+      { calIdx: 1, dayOffset: 2, sh: 11, sm: 0, dur: 60, title: "社内レビュー" },
+      { calIdx: 0, dayOffset: 2, sh: 19, sm: 0, dur: 90, title: "会食" },
+      { calIdx: 2, dayOffset: 3, sh: 10, sm: 30, dur: 60, title: "採用面談" },
+      { calIdx: 1, dayOffset: 3, sh: 14, sm: 0, dur: 60, title: "資料作成" },
+      { calIdx: 0, dayOffset: 4, sh: 9, sm: 30, dur: 30, title: "朝会" },
+      { calIdx: 2, dayOffset: 4, sh: 16, sm: 0, dur: 90, title: "打ち合わせ" },
+      { calIdx: 1, dayOffset: 5, sh: 12, sm: 0, dur: 60, title: "ランチ" },
+      { calIdx: 0, dayOffset: 5, sh: 20, sm: 0, dur: 60, title: "オンライン飲み" },
+      { calIdx: 2, dayOffset: 6, sh: 10, sm: 0, dur: 120, title: "研修" },
+      { calIdx: 1, dayOffset: 6, sh: 18, sm: 0, dur: 60, title: "会社Bとの調整会" }
+    ];
+    patterns.forEach(function(p, i){
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + p.dayOffset, p.sh, p.sm, 0, 0);
+      var start = new Date(d);
+      var end = new Date(d.getTime() + p.dur * 60000);
+      events.push({
+        id: "mock-" + i,
+        title: p.title,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        calendarId: MOCK_CALENDARS[p.calIdx].id
+      });
+    });
+    return events;
+  }
+
+  var MockCalendarAdapter = {
+    _events: null,
+    requestAccess: function(){
+      return Promise.resolve(true);
+    },
+    listCalendars: function(){
+      return Promise.resolve(MOCK_CALENDARS.slice());
+    },
+    listEvents: function(fromISO, toISO){
+      if (!this._events) this._events = makeMockEvents();
+      var from = new Date(fromISO).getTime();
+      var to = new Date(toISO).getTime();
+      var list = this._events.filter(function(ev){
+        var s = new Date(ev.start).getTime();
+        return s >= from && s <= to;
+      });
+      return Promise.resolve(list);
+    },
+    createEvent: function(payload){
+      if (!this._events) this._events = makeMockEvents();
+      var newEv = {
+        id: "mock-created-" + Date.now(),
+        title: payload.title,
+        start: payload.start,
+        end: payload.end,
+        calendarId: payload.calendarId
+      };
+      this._events.push(newEv);
+      return Promise.resolve({ id: newEv.id });
+    }
+  };
+
+  // G1照合済 2026-09-07: @ebarooni/capacitor-calendar 実API準拠(out/G1_plugin.md)。
+  // 日時はプラグイン側epoch ms、内部形式(Mockと同じ)はISO文字列に変換して統一する。
+  var NativeCalendarAdapter = {
+    _plugin: function(){
+      return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorCalendar;
+    },
+    requestAccess: function(){
+      var plugin = this._plugin();
+      if (!plugin || !plugin.requestFullCalendarAccess) return Promise.resolve(false);
+      return plugin.requestFullCalendarAccess().then(function(res){
+        return !!(res && (res.result === "granted" || res.granted));
+      }).catch(function(){ return false; });
+    },
+    listCalendars: function(){
+      var plugin = this._plugin();
+      if (!plugin || !plugin.listCalendars) return Promise.resolve([]);
+      return plugin.listCalendars().then(function(res){
+        var list = (res && res.result) || [];
+        return list.map(function(c){
+          return { id: c.id, name: c.title || c.name };
+        });
+      }).catch(function(){ return []; });
+    },
+    listEvents: function(fromISO, toISO){
+      var plugin = this._plugin();
+      if (!plugin || !plugin.listEventsInRange) return Promise.resolve([]);
+      var from = new Date(fromISO).getTime();
+      var to = new Date(toISO).getTime();
+      return plugin.listEventsInRange({ from: from, to: to }).then(function(res){
+        var list = (res && res.result) || [];
+        return list.map(function(ev){
+          return {
+            id: ev.id,
+            title: ev.title,
+            start: new Date(ev.startDate).toISOString(),
+            end: new Date(ev.endDate).toISOString(),
+            calendarId: ev.calendarId
+          };
+        });
+      }).catch(function(){ return []; });
+    },
+    createEvent: function(payload){
+      var plugin = this._plugin();
+      if (!plugin || !plugin.createEvent) return Promise.reject(new Error("ネイティブカレンダーが利用できません"));
+      return plugin.createEvent({
+        title: payload.title,
+        startDate: new Date(payload.start).getTime(),
+        endDate: new Date(payload.end).getTime(),
+        location: payload.location,
+        description: payload.notes,
+        calendarId: payload.calendarId
+      }).then(function(res){
+        return { id: (res && res.id) || null };
+      });
+    }
+  };
+
+  function isNativeAvailable(){
+    return !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorCalendar);
+  }
+
+  function getAdapter(demoMode){
+    if (demoMode || !isNativeAvailable()) return MockCalendarAdapter;
+    return NativeCalendarAdapter;
+  }
+
+  window.ChoseiCalendar = getAdapter(true); // 初期値。setActiveAdapterで切替。
+  window.ChoseiCalendar.setActiveAdapter = function(){}; // placeholder no-op guard
+
+  /* =========================================================
+     設定(localStorage)
+     ========================================================= */
+  var SETTINGS_KEY = "chosei_settings_v1";
+  var DEFAULT_SETTINGS = {
+  // セキュリティ修正 2026-10-10: 実在の個人住所・緯度経度が初期値にハードコードされていたため、
+  // 機能を保つ非個人情報のサンプル地点(東京駅)に置き換え。利用者は「設定」画面で自分の自宅を入力する前提。
+    homeAddress: "東京都千代田区丸の内1-9-1",
+    homeLat: 35.6812,
+    walkMin: 15,
+    travelMin: 45,
+    calendars: [], // [{id,name,enabled}]
+    demoMode: true
+  };
+
+  function loadSettings(){
+    try {
+      var raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return Object.assign({}, DEFAULT_SETTINGS);
+      var parsed = JSON.parse(raw);
+      return Object.assign({}, DEFAULT_SETTINGS, parsed);
+    } catch (e) {
+      return Object.assign({}, DEFAULT_SETTINGS);
+    }
+  }
+
+  function saveSettings(s){
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  }
+
+  var state = {
+    settings: loadSettings(),
+    duration: 60,
+    daypart: "anytime",
+    rangeDays: 7,
+    candidates: [],
+    selectedCandidate: null,
+    allCalendars: []
+  };
+
+  function activeAdapter(){
+    return getAdapter(state.settings.demoMode);
+  }
+
+  /* =========================================================
+     トースト
+     ========================================================= */
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){
+      toastEl.classList.remove("show");
+    }, 2600);
+  }
+
+  /* =========================================================
+     タブ切替
+     ========================================================= */
+  var tabBtns = document.querySelectorAll(".tab-btn");
+  var screens = document.querySelectorAll(".screen");
+
+  function showScreen(id){
+    screens.forEach(function(s){
+      s.classList.toggle("active", s.id === id);
+    });
+    tabBtns.forEach(function(b){
+      b.classList.toggle("active", b.dataset.screen === id);
+    });
+  }
+
+  tabBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      showScreen(btn.dataset.screen);
+      if (btn.dataset.screen === "screen-settings") renderSettingsForm();
+    });
+  });
+
+  /* =========================================================
+     チップ選択(所要時間・時間帯・期間)
+     ========================================================= */
+  function bindChipGroup(containerId, onSelect){
+    var container = document.getElementById(containerId);
+    container.addEventListener("click", function(e){
+      var btn = e.target.closest(".chip");
+      if (!btn) return;
+      Array.prototype.forEach.call(container.querySelectorAll(".chip"), function(c){
+        c.classList.remove("selected");
+      });
+      btn.classList.add("selected");
+      onSelect(btn.dataset.val);
+    });
+  }
+
+  bindChipGroup("duration-chips", function(val){ state.duration = parseInt(val, 10); });
+  bindChipGroup("daypart-chips", function(val){ state.daypart = val; });
+  bindChipGroup("range-chips", function(val){ state.rangeDays = parseInt(val, 10); });
+
+  /* =========================================================
+     空き時間検索ロジック
+     ========================================================= */
+  var DAYPART_RANGES = {
+    morning: { startH: 8, endH: 11 },
+    noon: { startH: 11, endH: 17 },
+    night: { startH: 17, endH: 22 },
+    anytime: { startH: 8, endH: 22 }
+  };
+
+  var DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
+
+  function formatDateJP(d){
+    return (d.getMonth() + 1) + "/" + d.getDate() + "(" + DAY_NAMES[d.getDay()] + ")";
+  }
+  function formatTimeJP(d){
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+
+  function fetchEnabledEvents(fromDate, toDate){
+    return activeAdapter().listEvents(fromDate.toISOString(), toDate.toISOString()).then(function(events){
+      var enabledIds = state.settings.calendars.filter(function(c){ return c.enabled; }).map(function(c){ return c.id; });
+      if (enabledIds.length === 0) return events; // 未設定なら全カレンダー対象
+      return events.filter(function(ev){ return enabledIds.indexOf(ev.calendarId) !== -1; });
+    });
+  }
+
+  function findFreeSlots(events, durationMin, rangeDays, daypart){
+    var slots = [];
+    var now = new Date();
+    var range = DAYPART_RANGES[daypart] || DAYPART_RANGES.anytime;
+    // 8時前・22時後は避ける(全体の探索範囲もこれでカバー)
+    var HARD_START_H = 8, HARD_END_H = 22;
+
+    for (var dayOffset = 0; dayOffset < rangeDays; dayOffset++) {
+      var baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+      var windowStartH = Math.max(range.startH, HARD_START_H);
+      var windowEndH = Math.min(range.endH, HARD_END_H);
+      if (windowStartH >= windowEndH) continue;
+
+      var dayStart = new Date(baseDate); dayStart.setHours(windowStartH, 0, 0, 0);
+      var dayEnd = new Date(baseDate); dayEnd.setHours(windowEndH, 0, 0, 0);
+
+      // 今日の場合、現在時刻より前は除外(30分単位で切り上げ)
+      if (dayOffset === 0) {
+        var nowRounded = new Date(now);
+        var minutes = nowRounded.getMinutes();
+        var addMin = 30 - (minutes % 30 === 0 ? 0 : minutes % 30);
+        nowRounded.setMinutes(minutes + addMin, 0, 0);
+        if (nowRounded > dayStart) dayStart = nowRounded;
+      }
+      if (dayStart >= dayEnd) continue;
+
+      var dayEvents = events.filter(function(ev){
+        var s = new Date(ev.start);
+        return s.getFullYear() === baseDate.getFullYear() &&
+               s.getMonth() === baseDate.getMonth() &&
+               s.getDate() === baseDate.getDate();
+      }).sort(function(a, b){ return new Date(a.start) - new Date(b.start); });
+
+      var cursor = new Date(dayStart);
+      for (var i = 0; i <= dayEvents.length; i++) {
+        var evStart, evObj;
+        if (i < dayEvents.length) {
+          evObj = dayEvents[i];
+          evStart = new Date(evObj.start);
+        } else {
+          evStart = dayEnd;
+        }
+        if (evStart > cursor) {
+          var freeMin = (evStart - cursor) / 60000;
+          if (freeMin >= durationMin) {
+            var slotStart = new Date(cursor);
+            var slotEnd = new Date(slotStart.getTime() + durationMin * 60000);
+            slots.push({
+              start: slotStart,
+              end: slotEnd,
+              before: i > 0 ? dayEvents[i - 1].title : null,
+              after: i < dayEvents.length ? dayEvents[i].title : null
+            });
+          }
+        }
+        if (i < dayEvents.length) {
+          var evEnd = new Date(evObj.end);
+          if (evEnd > cursor) cursor = evEnd;
+        }
+      }
+    }
+    return slots;
+  }
+
+  function pickTopCandidates(slots, daypart, count){
+    // 希望帯の中央に近いものを優先しつつ、日をなるべく分散させる
+    var range = DAYPART_RANGES[daypart] || DAYPART_RANGES.anytime;
+    var midH = (range.startH + range.endH) / 2;
+    slots.forEach(function(slot){
+      var h = slot.start.getHours() + slot.start.getMinutes() / 60;
+      slot.score = Math.abs(h - midH);
+    });
+    slots.sort(function(a, b){ return a.score - b.score || a.start - b.start; });
+
+    var picked = [];
+    var usedDays = {};
+    slots.forEach(function(slot){
+      if (picked.length >= count) return;
+      var dayKey = slot.start.getFullYear() + "-" + slot.start.getMonth() + "-" + slot.start.getDate();
+      if (usedDays[dayKey]) return;
+      picked.push(slot);
+      usedDays[dayKey] = true;
+    });
+    // 日が足りず埋まらない場合は重複日も許可して補充
+    if (picked.length < count) {
+      slots.forEach(function(slot){
+        if (picked.length >= count) return;
+        if (picked.indexOf(slot) !== -1) return;
+        picked.push(slot);
+      });
+    }
+    picked.sort(function(a, b){ return a.start - b.start; });
+    return picked.slice(0, count);
+  }
+
+  function slotToText(slot){
+    return formatDateJP(slot.start) + " " + formatTimeJP(slot.start) + "〜" + formatTimeJP(slot.end) + " はいかがでしょうか";
+  }
+
+  /* =========================================================
+     画面1: 候補検索・表示
+     ========================================================= */
+  var btnSearch = document.getElementById("btn-search");
+  var candidatesArea = document.getElementById("candidates-area");
+
+  btnSearch.addEventListener("click", function(){
+    btnSearch.disabled = true;
+    btnSearch.textContent = "検索中…";
+    var now = new Date();
+    var from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + state.rangeDays, 23, 59, 59);
+
+    fetchEnabledEvents(from, to).then(function(events){
+      var slots = findFreeSlots(events, state.duration, state.rangeDays, state.daypart);
+      var top = pickTopCandidates(slots, state.daypart, 3);
+      state.candidates = top;
+      renderCandidates();
+    }).catch(function(err){
+      showToast("候補の取得に失敗しました: " + (err && err.message ? err.message : err));
+    }).then(function(){
+      btnSearch.disabled = false;
+      btnSearch.textContent = "候補を出す";
+    });
+  });
+
+  function renderCandidates(){
+    candidatesArea.innerHTML = "";
+    if (state.candidates.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "条件に合う空きが見つかりませんでした。期間や時間帯を変えてお試しください。";
+      candidatesArea.appendChild(empty);
+      return;
+    }
+
+    state.candidates.forEach(function(slot, idx){
+      var card = document.createElement("div");
+      card.className = "card selectable";
+      var aroundText = "";
+      if (slot.before) aroundText += "前: " + slot.before + "  ";
+      if (slot.after) aroundText += "後: " + slot.after;
+      if (!aroundText) aroundText = "前後の予定なし";
+
+      card.innerHTML =
+        '<div class="date">' + formatDateJP(slot.start) + '</div>' +
+        '<div class="time">' + formatTimeJP(slot.start) + '〜' + formatTimeJP(slot.end) + '</div>' +
+        '<div class="around">' + aroundText + '</div>' +
+        '<div class="card-actions">' +
+          '<button type="button" class="btn small" data-action="select" data-idx="' + idx + '">この候補を選ぶ</button>' +
+          '<button type="button" class="btn small secondary" data-action="copy" data-idx="' + idx + '">コピー</button>' +
+        '</div>';
+      candidatesArea.appendChild(card);
+    });
+
+    var copyAllBtn = document.createElement("button");
+    copyAllBtn.type = "button";
+    copyAllBtn.className = "btn secondary";
+    copyAllBtn.style.marginTop = "8px";
+    copyAllBtn.textContent = "3候補まとめてコピー";
+    copyAllBtn.addEventListener("click", function(){
+      var text = state.candidates.map(function(s, i){
+        return (i + 1) + ". " + slotToText(s);
+      }).join("\n");
+      copyToClipboard(text);
+    });
+    candidatesArea.appendChild(copyAllBtn);
+
+    candidatesArea.querySelectorAll('[data-action="select"]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        state.selectedCandidate = state.candidates[idx];
+        renderConfirmScreen();
+        showScreen("screen-confirm");
+        tabBtns.forEach(function(b){ b.classList.toggle("active", b.dataset.screen === "screen-confirm"); });
+        showToast("候補を選びました。「確定」で詳細を入力してください");
+      });
+    });
+    candidatesArea.querySelectorAll('[data-action="copy"]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = parseInt(btn.dataset.idx, 10);
+        copyToClipboard(slotToText(state.candidates[idx]));
+      });
+    });
+  }
+
+  /* =========================================================
+     クリップボード
+     ========================================================= */
+  function copyToClipboard(text){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        showToast("コピーしました");
+      }).catch(function(){
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text){
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      showToast(ok ? "コピーしました" : "コピーできませんでした。文章を選択してコピーしてください");
+    } catch (e) {
+      showToast("コピーできませんでした。文章を選択してコピーしてください");
+    }
+  }
+
+  /* =========================================================
+     画面2: 確定
+     ========================================================= */
+  var confirmEmpty = document.getElementById("confirm-empty");
+  var confirmBody = document.getElementById("confirm-body");
+  var confirmSelectedCard = document.getElementById("confirm-selected-card");
+  var inputTitle = document.getElementById("input-title");
+  var inputLocation = document.getElementById("input-location");
+  var inputLatlng = document.getElementById("input-latlng");
+  var inputCalendar = document.getElementById("input-calendar");
+  var btnCreate = document.getElementById("btn-create");
+  var notesPreview = document.getElementById("notes-preview");
+
+  function renderConfirmScreen(){
+    var slot = state.selectedCandidate;
+    if (!slot) {
+      confirmEmpty.style.display = "block";
+      confirmBody.style.display = "none";
+      return;
+    }
+    confirmEmpty.style.display = "none";
+    confirmBody.style.display = "block";
+    confirmSelectedCard.innerHTML =
+      '<div class="date">' + formatDateJP(slot.start) + '</div>' +
+      '<div class="time">' + formatTimeJP(slot.start) + '〜' + formatTimeJP(slot.end) + '</div>';
+
+    inputCalendar.innerHTML = "";
+    state.allCalendars.forEach(function(cal){
+      var opt = document.createElement("option");
+      opt.value = cal.id;
+      opt.textContent = cal.name;
+      inputCalendar.appendChild(opt);
+    });
+    notesPreview.style.display = "none";
+  }
+
+  var EXCUSES = [
+    "ごめん、大江戸線が勝どきで止まってて今動き出した！",
+    "AIに交通手段を調べさせてたら逆に遅れたw",
+    "エレベーター待ちの行列がすごくて…もうすぐ着きます！",
+    "コンビニでうっかり長居してしまいました、急ぎます！",
+    "充電が切れかけて充電スポット探してました、あと少し！",
+    "信号にことごとく引っかかってます、あと5分！",
+    "靴紐が真面目に3回もほどけました、まもなく到着です",
+    "道を1本間違えて今リカバリー中です、すみません！",
+    "自転車の空気入れに手間取りました、もうすぐ着きます",
+    "出る直前に忘れ物に気づいて取りに戻りました、急いでます！"
+  ];
+
+  function pickRandomExcuses(n){
+    var pool = EXCUSES.slice();
+    var picked = [];
+    for (var i = 0; i < n && pool.length > 0; i++) {
+      var idx = Math.floor(Math.random() * pool.length);
+      picked.push(pool.splice(idx, 1)[0]);
+    }
+    return picked;
+  }
+
+  function encodeMapsParam(str){
+    return encodeURIComponent(str);
+  }
+
+  function buildTransitSection(slot){
+    var s = state.settings;
+    var travelTotalMin = (s.travelMin || 0) + 15; // 余裕15分
+    var departure = new Date(slot.start.getTime() - travelTotalMin * 60000);
+    var location = inputLocation.value.trim() || "目的地";
+    var url = "https://maps.apple.com/?saddr=" + encodeMapsParam(s.homeAddress) +
+      "&daddr=" + encodeMapsParam(location) + "&dirflg=r";
+    return "■一番簡単な行き方\n" +
+      formatTimeJP(departure) + "に家を出る → 徒歩" + s.walkMin + "分で" + s.station + "\n" +
+      url;
+  }
+
+  function parseLatLng(str){
+    if (!str) return null;
+    var parts = str.split(",");
+    if (parts.length !== 2) return null;
+    var lat = parseFloat(parts[0]);
+    var lng = parseFloat(parts[1]);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { lat: lat, lng: lng };
+  }
+
+  function haversineKm(a, b){
+    var R = 6371;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLng = (b.lng - a.lng) * Math.PI / 180;
+    var lat1 = a.lat * Math.PI / 180;
+    var lat2 = b.lat * Math.PI / 180;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    var c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    return R * c;
+  }
+
+  function estimateTaxiFare(distanceKm){
+    // 東京23区: 初乗り500円/1.096km、以後100円/255m
+    var BASE_FARE = 500;
+    var BASE_KM = 1.096;
+    var STEP_FARE = 100;
+    var STEP_KM = 0.255;
+    if (distanceKm <= BASE_KM) return BASE_FARE;
+    var extraKm = distanceKm - BASE_KM;
+    var steps = Math.ceil(extraKm / STEP_KM);
+    return BASE_FARE + steps * STEP_FARE;
+  }
+
+  function buildTaxiSection(){
+    var s = state.settings;
+    var destLatLng = parseLatLng(inputLatlng.value.trim());
+    if (!destLatLng) {
+      return "■遅れた場合のタクシー\n場所の住所をMapsで開いて確認してください(緯度経度未入力のため概算できません)";
+    }
+    var home = { lat: s.homeLat, lng: s.homeLng };
+    var straightKm = haversineKm(home, destLatLng);
+    var roadKm = straightKm * 1.3;
+    var fare = estimateTaxiFare(roadKm);
+    return "■遅れた場合のタクシー(概算)\n" +
+      "直線距離約" + straightKm.toFixed(1) + "km → 道路距離目安約" + roadKm.toFixed(1) + "km\n" +
+      "概算料金: " + fare.toLocaleString() + "円前後(東京23区料金・実際と異なる場合があります)";
+  }
+
+  function buildExcuseSection(){
+    var picked = pickRandomExcuses(3);
+    return "■遅刻の言い訳(遊び)\n" + picked.map(function(t, i){ return (i + 1) + ". " + t; }).join("\n");
+  }
+
+  function buildNotes(slot){
+    return [
+      buildTransitSection(slot),
+      "",
+      buildTaxiSection(),
+      "",
+      buildExcuseSection()
+    ].join("\n");
+  }
+
+  btnCreate.addEventListener("click", function(){
+    var slot = state.selectedCandidate;
+    if (!slot) { showToast("先に候補を選んでください"); return; }
+    var title = inputTitle.value.trim();
+    if (!title) { showToast("タイトルを入力してください"); return; }
+
+    var notes = buildNotes(slot);
+    notesPreview.style.display = "block";
+    notesPreview.innerHTML =
+      '<h3>説明欄プレビュー</h3><div>' + escapeHtml(notes) + '</div>' +
+      '<button type="button" class="btn small secondary" id="btn-copy-excuse" style="margin-top:10px;">言い訳だけコピー</button>';
+
+    var excuseBtn = document.getElementById("btn-copy-excuse");
+    if (excuseBtn) {
+      excuseBtn.addEventListener("click", function(){
+        var excuseOnly = notes.split("■遅刻の言い訳")[1];
+        copyToClipboard("■遅刻の言い訳" + (excuseOnly || ""));
+      });
+    }
+
+    btnCreate.disabled = true;
+    btnCreate.textContent = "登録中…";
+
+    activeAdapter().createEvent({
+      title: title,
+      start: slot.start.toISOString(),
+      end: slot.end.toISOString(),
+      location: inputLocation.value.trim(),
+      notes: notes,
+      calendarId: inputCalendar.value
+    }).then(function(){
+      showToast("予定を登録しました");
+    }).catch(function(err){
+      showToast("登録に失敗しました: " + (err && err.message ? err.message : err));
+    }).then(function(){
+      btnCreate.disabled = false;
+      btnCreate.textContent = "予定を入れる";
+    });
+  });
+
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, function(ch){
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  /* =========================================================
+     画面3: 設定
+     ========================================================= */
+  var setHomeAddress = document.getElementById("set-home-address");
+  var setHomeLatlng = document.getElementById("set-home-latlng");
+  var setStation = document.getElementById("set-station");
+  var setWalkMin = document.getElementById("set-walk-min");
+  var setTravelMin = document.getElementById("set-travel-min");
+  var setCalendarsBox = document.getElementById("set-calendars");
+  var setDemoMode = document.getElementById("set-demo-mode");
+  var modeHint = document.getElementById("mode-hint");
+  var btnSaveSettings = document.getElementById("btn-save-settings");
+  var saveNote = document.getElementById("save-note");
+
+  function renderSettingsForm(){
+    var s = state.settings;
+    setHomeAddress.value = s.homeAddress;
+    setHomeLatlng.value = s.homeLat + "," + s.homeLng;
+    setStation.value = s.station;
+    setWalkMin.value = s.walkMin;
+    setTravelMin.value = s.travelMin;
+    setDemoMode.checked = !!s.demoMode;
+    modeHint.textContent = s.demoMode
+      ? "モックカレンダーで動作を確認できます"
+      : (isNativeAvailable() ? "端末のカレンダーを使用します" : "この環境ではネイティブカレンダーが利用できないため、実際はモックが使われます");
+
+    loadCalendarsIntoSettings();
+  }
+
+  function loadCalendarsIntoSettings(){
+    activeAdapter().listCalendars().then(function(cals){
+      state.allCalendars = cals;
+      var existing = {};
+      state.settings.calendars.forEach(function(c){ existing[c.id] = c.enabled; });
+
+      setCalendarsBox.innerHTML = "";
+      cals.forEach(function(cal){
+        var enabled = existing.hasOwnProperty(cal.id) ? existing[cal.id] : true;
+        var row = document.createElement("div");
+        row.className = "checkbox-row";
+        var cbId = "cal-cb-" + cal.id;
+        row.innerHTML =
+          '<input type="checkbox" id="' + cbId + '" data-cal-id="' + cal.id + '" ' + (enabled ? "checked" : "") + '>' +
+          '<label for="' + cbId + '">' + escapeHtml(cal.name) + '</label>';
+        setCalendarsBox.appendChild(row);
+      });
+
+      if (inputCalendar) {
+        var currentVal = inputCalendar.value;
+        inputCalendar.innerHTML = "";
+        cals.forEach(function(cal){
+          var opt = document.createElement("option");
+          opt.value = cal.id;
+          opt.textContent = cal.name;
+          inputCalendar.appendChild(opt);
+        });
+        if (currentVal) inputCalendar.value = currentVal;
+      }
+    }).catch(function(){
+      setCalendarsBox.innerHTML = '<div class="empty">カレンダー一覧を取得できませんでした</div>';
+    });
+  }
+
+  setDemoMode.addEventListener("change", function(){
+    modeHint.textContent = setDemoMode.checked
+      ? "モックカレンダーで動作を確認できます"
+      : (isNativeAvailable() ? "端末のカレンダーを使用します" : "この環境ではネイティブカレンダーが利用できないため、実際はモックが使われます");
+    // プレビュー目的で一時的に切替えてカレンダー一覧を再取得
+    var tmp = Object.assign({}, state.settings, { demoMode: setDemoMode.checked });
+    var prevAdapter = state.settings.demoMode;
+    state.settings.demoMode = setDemoMode.checked;
+    loadCalendarsIntoSettings();
+    state.settings.demoMode = prevAdapter; // 保存はbtn-save-settingsで確定
+  });
+
+  btnSaveSettings.addEventListener("click", function(){
+    var latlng = parseLatLng(setHomeLatlng.value.trim());
+    var s = state.settings;
+    s.homeAddress = setHomeAddress.value.trim() || DEFAULT_SETTINGS.homeAddress;
+    if (latlng) {
+      s.homeLat = latlng.lat;
+      s.homeLng = latlng.lng;
+    }
+    s.station = setStation.value.trim() || DEFAULT_SETTINGS.station;
+    s.walkMin = parseInt(setWalkMin.value, 10) || 0;
+    s.travelMin = parseInt(setTravelMin.value, 10) || 0;
+    s.demoMode = setDemoMode.checked;
+
+    var calendars = [];
+    setCalendarsBox.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      calendars.push({ id: cb.dataset.calId, enabled: cb.checked });
+    });
+    s.calendars = calendars;
+
+    saveSettings(s);
+    saveNote.textContent = "保存しました(" + new Date().toLocaleTimeString("ja-JP") + ")";
+    showToast("設定を保存しました");
+    renderSettingsForm();
+  });
+
+  /* =========================================================
+     初期化
+     ========================================================= */
+  function init(){
+    // 権限リクエスト(ネイティブ利用時のみ意味を持つ。失敗しても致命的ではない)
+    activeAdapter().requestAccess().catch(function(){});
+    renderSettingsForm();
+    renderConfirmScreen();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="iPhoneのカレンダーから空き時間を探し、候補3つの共有から予定作成までをすばやく進める日程調整アプリ。">
+  <meta name="theme-color" content="#1a73e8">
+  <title>ちょうせいちゃん｜日程調整を、もっと軽く。</title>
+  <style>
+    :root{--blue:#1a73e8;--blue-dark:#1558b0;--ink:#172033;--muted:#5f6b7a;--line:#e5eaf1;--soft:#f5f8fd;--white:#fff}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--white);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+    a{color:inherit}
+    .wrap{width:min(1080px,calc(100% - 40px));margin-inline:auto}
+    header{border-bottom:1px solid var(--line);background:rgba(255,255,255,.94);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
+    .nav{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+    .brand{color:var(--blue);font-size:20px;font-weight:800;text-decoration:none;letter-spacing:.02em}
+    .nav-links{display:flex;align-items:center;gap:24px;font-size:14px;font-weight:650}
+    .nav-links a{text-decoration:none}
+    .hero{padding:88px 0 72px;overflow:hidden}
+    .hero-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(300px,.88fr);align-items:center;gap:70px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;margin:0 0 18px;color:var(--blue);font-weight:750;font-size:14px}
+    .eyebrow::before{content:"";width:28px;height:3px;border-radius:99px;background:var(--blue)}
+    h1{font-size:clamp(38px,6vw,68px);line-height:1.12;letter-spacing:-.04em;margin:0 0 24px}
+    .lead{max-width:650px;margin:0 0 34px;color:var(--muted);font-size:clamp(17px,2.2vw,21px)}
+    .actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .button{display:inline-flex;justify-content:center;align-items:center;min-height:52px;padding:0 22px;border-radius:12px;background:var(--blue);color:#fff;text-decoration:none;font-weight:750;box-shadow:0 10px 28px rgba(26,115,232,.2);transition:.2s ease}
+    .button:hover{background:var(--blue-dark);transform:translateY(-1px)}
+    .status{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;font-weight:650;padding:10px 2px}
+    .status::before{content:"";width:9px;height:9px;border-radius:50%;background:#f9ab00;box-shadow:0 0 0 5px #fff3d6}
+    .phone{width:min(340px,100%);margin:auto;border:1px solid #dce3ed;border-radius:38px;background:#fff;padding:18px;box-shadow:0 28px 80px rgba(30,55,90,.18);position:relative}
+    .phone::before{content:"";display:block;width:92px;height:22px;border-radius:0 0 14px 14px;background:#172033;position:absolute;top:0;left:50%;transform:translateX(-50%)}
+    .phone-screen{border-radius:24px;background:linear-gradient(165deg,#f8fbff,#eef5ff);padding:40px 18px 20px;min-height:535px}
+    .mini-title{color:var(--blue);font-size:19px;font-weight:800;margin-bottom:22px}
+    .mini-label{font-size:12px;color:var(--muted);font-weight:700;margin:14px 0 7px}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{padding:7px 10px;border:1px solid #d9e2ef;border-radius:999px;background:#fff;font-size:11px}
+    .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+    .mini-button{margin:22px 0 15px;padding:11px;border-radius:10px;background:var(--blue);color:#fff;text-align:center;font-size:13px;font-weight:750}
+    .slot{margin-top:9px;padding:11px 12px;border:1px solid #e0e7f0;border-radius:12px;background:#fff}
+    .slot strong{font-size:12px;display:block}.slot span{font-size:11px;color:var(--muted)}
+    .section{padding:82px 0}
+    .soft{background:var(--soft)}
+    .section-head{max-width:680px;margin-bottom:38px}
+    h2{font-size:clamp(28px,4vw,42px);line-height:1.25;letter-spacing:-.025em;margin:0 0 14px}
+    .section-head p{margin:0;color:var(--muted);font-size:17px}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .step{border:1px solid var(--line);border-radius:20px;background:#fff;padding:28px;box-shadow:0 8px 26px rgba(31,48,75,.05)}
+    .number{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#e8f1fe;color:var(--blue);font-weight:850;margin-bottom:22px}
+    .step h3{margin:0 0 9px;font-size:20px}.step p{margin:0;color:var(--muted);font-size:15px}
+    .feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    .feature{padding:25px 26px;border:1px solid var(--line);border-radius:18px}
+    .feature h3{margin:0 0 7px;font-size:18px}.feature p{margin:0;color:var(--muted);font-size:15px}
+    .cta{padding:74px 0;text-align:center}.cta p{color:var(--muted);margin:12px auto 28px;max-width:620px}
+    footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:13px}
+    .footer-row{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.footer-row a{color:var(--blue);text-decoration:none;font-weight:650}
+    @media(max-width:760px){.wrap{width:min(100% - 28px,1080px)}.nav-links a:first-child{display:none}.hero{padding:55px 0}.hero-grid{grid-template-columns:1fr;gap:48px}.hero-copy{text-align:center}.eyebrow{justify-content:center}.lead{margin-inline:auto}.actions{justify-content:center}.phone{width:min(326px,94%)}.section{padding:60px 0}.steps,.feature-grid{grid-template-columns:1fr}.step{padding:24px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="./">ちょうせいちゃん</a>
+      <nav class="nav-links" aria-label="メインナビゲーション">
+        <a href="#features">機能</a>
+        <a href="privacy.html">プライバシー</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">日程調整アプリ</p>
+          <h1>空いている時間を、<br>すぐ候補に。</h1>
+          <p class="lead">iPhoneの全カレンダーから空きを探し、候補を3つにまとめて共有。決まった予定の登録まで、ひと続きで完了します。</p>
+          <div class="actions">
+            <a class="button" href="./app/">Web版デモを試す</a>
+            <span class="status">App Store 準備中</span>
+          </div>
+        </div>
+
+        <div class="phone" aria-label="ちょうせいちゃんの画面イメージ">
+          <div class="phone-screen">
+            <div class="mini-title">ちょうせいちゃん</div>
+            <div class="mini-label">所要時間</div>
+            <div class="chips"><span class="chip">30分</span><span class="chip on">60分</span><span class="chip">90分</span></div>
+            <div class="mini-label">希望する時間帯</div>
+            <div class="chips"><span class="chip">朝</span><span class="chip">昼</span><span class="chip on">いつでも</span></div>
+            <div class="mini-button">候補を出す</div>
+            <div class="slot"><strong>9月9日（水）</strong><span>11:00〜12:00</span></div>
+            <div class="slot"><strong>9月10日（木）</strong><span>14:00〜15:00</span></div>
+            <div class="slot"><strong>9月11日（金）</strong><span>10:30〜11:30</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section soft">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>探す、送る、確定する。<br>たった3ステップ。</h2>
+          <p>複数のカレンダーを見比べる手間を減らし、相手への連絡から予定作成までを短くします。</p>
+        </div>
+        <div class="steps">
+          <article class="step"><div class="number">1</div><h3>空きを探す</h3><p>iPhoneに入っている全カレンダーを横断し、予定が重ならない時間を探します。</p></article>
+          <article class="step"><div class="number">2</div><h3>候補3つを送る</h3><p>見つかった候補を3つに整理。まとめてコピーし、メッセージやメールでそのまま送れます。</p></article>
+          <article class="step"><div class="number">3</div><h3>予定を作る</h3><p>相手と決まった日時を選び、タイトルと場所を入れてiPhoneのカレンダーに登録します。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>当日の移動まで、予定の中に。</h2>
+          <p>確定した予定の説明欄には、待ち合わせ当日に役立つ情報が自動で入ります。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature"><h3>行き方と出発時刻</h3><p>目的地までのわかりやすい行き方と、余裕を含めた出発時刻の目安を作成します。</p></article>
+          <article class="feature"><h3>タクシー料金の概算</h3><p>遅れそうなときの判断材料として、自宅から目的地までのタクシー料金を概算します。</p></article>
+          <article class="feature"><h3>遅刻の言い訳</h3><p>もしものときに使える、軽い言い訳のコピペ候補も添えます。ちょっとした遊び機能です。</p></article>
+          <article class="feature"><h3>端末内で完結</h3><p>カレンダー情報は端末内だけで利用します。個人情報や利用状況を外部サーバーへ送信しません。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta soft">
+      <div class="wrap">
+        <h2>日程調整を、今すぐ試す。</h2>
+        <p>Web版はモックデータで動作します。カレンダーへのアクセスなしで、候補検索から予定作成までお試しいただけます。</p>
+        <div class="actions" style="justify-content:center"><a class="button" href="./app/">Web版デモを試す</a><span class="status">App Store 準備中</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-row"><span>© 2026 ちょうせいちゃん</span><a href="privacy.html">プライバシーポリシー</a></div>
+  </footer>
+</body>
+</html>
