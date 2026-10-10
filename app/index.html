@@ -591,11 +591,13 @@
      設定(localStorage)
      ========================================================= */
   var SETTINGS_KEY = "chosei_settings_v1";
-  var DEFAULT_SETTINGS = {
   // セキュリティ修正 2026-10-10: 実在の個人住所・緯度経度が初期値にハードコードされていたため、
   // 機能を保つ非個人情報のサンプル地点(東京駅)に置き換え。利用者は「設定」画面で自分の自宅を入力する前提。
+  var DEFAULT_SETTINGS = {
     homeAddress: "東京都千代田区丸の内1-9-1",
     homeLat: 35.6812,
+    homeLng: 139.7671,
+    station: "東京駅",
     walkMin: 15,
     travelMin: 45,
     calendars: [], // [{id,name,enabled}]
@@ -852,9 +854,11 @@
     state.candidates.forEach(function(slot, idx){
       var card = document.createElement("div");
       card.className = "card selectable";
+      // セキュリティ修正 2026-10-10: before/afterは端末カレンダーの予定名(利用者が制御できない外部入力)。
+      // escapeHtmlせずinnerHTMLへ渡すとHTML/スクリプトを仕込んだ予定名でXSSが成立するため、ここで必ず無害化する。
       var aroundText = "";
-      if (slot.before) aroundText += "前: " + slot.before + "  ";
-      if (slot.after) aroundText += "後: " + slot.after;
+      if (slot.before) aroundText += "前: " + escapeHtml(slot.before) + "  ";
+      if (slot.after) aroundText += "後: " + escapeHtml(slot.after);
       if (!aroundText) aroundText = "前後の予定なし";
 
       card.innerHTML =
